@@ -39,10 +39,10 @@ fn main() {
     let result = execute_command(device, &command, &tuya.api_secret);
     if let Some(result) = result {
         match (&result, command) {
-            (SwitchCommand::On, SwitchCommand::On) => println!("Switched {}", result),
-            (SwitchCommand::Off, SwitchCommand::Off) => println!("Switched {}", result),
-            (SwitchCommand::On, SwitchCommand::Status) => println!("Status: {}", result),
-            (SwitchCommand::Off, SwitchCommand::Status) => println!("Status: {}", result),
+            (SwitchCommand::On, SwitchCommand::On) | (SwitchCommand::Off, SwitchCommand::Off) => {
+                println!("Switched {}", result)
+            }
+            (_, SwitchCommand::Status) => println!("Status: {}", result),
             _ => println!("Unexpected result: {}", result),
         }
     } else {
