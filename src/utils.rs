@@ -1,12 +1,10 @@
-use std::{
-    collections::HashMap, fmt::Display, net::IpAddr, path::PathBuf, str::FromStr, time::SystemTime,
-};
+use std::{fmt::Display, path::PathBuf, str::FromStr};
 
-use colorize::AnsiColor;
-use rust_tuyapi::{mesparse::Message, tuyadevice::TuyaDevice, Payload, PayloadStruct};
-use serde_json::{json, Value};
+use colored::Colorize;
+use rust_tuyapi::{mesparse::Message, Payload};
+use serde_json::Value;
 
-use crate::devices::Device;
+use crate::devices::DeviceType;
 
 pub fn get_devices_path() -> PathBuf {
     if cfg!(debug_assertions) {
@@ -17,10 +15,30 @@ pub fn get_devices_path() -> PathBuf {
     }
 }
 
+pub fn validate_device_command(device: &DeviceType, command: &SwitchCommand) -> bool {
+    match device {
+        DeviceType::Switch => matches!(
+            command,
+            SwitchCommand::On | SwitchCommand::Off | SwitchCommand::Status
+        ),
+
+        DeviceType::Blind => matches!(
+            command,
+            SwitchCommand::Open
+                | SwitchCommand::Close
+                | SwitchCommand::Stop
+                | SwitchCommand::Status,
+        ),
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum SwitchCommand {
     On,
     Off,
+    Open,
+    Close,
+    Stop,
     Status,
 }
 
@@ -31,6 +49,9 @@ impl FromStr for SwitchCommand {
         match s.to_lowercase().as_str() {
             "on" => Ok(Self::On),
             "off" => Ok(Self::Off),
+            "open" => Ok(Self::Open),
+            "close" => Ok(Self::Close),
+            "stop" => Ok(Self::Stop),
             "status" => Ok(Self::Status),
             _ => Err(format!("Invalid command: {}", s)),
         }
@@ -42,156 +63,48 @@ impl Display for SwitchCommand {
         match self {
             Self::On => write!(f, "{}", "On".green()),
             Self::Off => write!(f, "{}", "Off".red()),
+            Self::Open => write!(f, "{}", "Open".green()),
+            Self::Close => write!(f, "{}", "Close".red()),
+            Self::Stop => write!(f, "{}", "Stop".yellow()),
             Self::Status => write!(f, "Status"),
         }
     }
 }
 
-// #[derive(Serialize, Debug)]
-// struct Payload {
-//     commands: Vec<Command>,
-// }
-
-// #[derive(Serialize, Debug)]
-// struct Command {
-//     code: String,
-//     value: bool,
-// }
-
-pub fn execute_command(
-    device: &Device,
-    command: &SwitchCommand,
-    acces_token: &str,
-) -> Option<SwitchCommand> {
-    // let url = format!(
-    //     "https://openapi.tuyaeu.com/v1.0/iot-03/devices/{}/{}",
-    //     device.id,
-    //     match command {
-    //         SwitchCommand::On | SwitchCommand::Off => "commands",
-    //         SwitchCommand::Status => "status",
-    //     }
-    // );
-    // let time = format!(
-    //     "{}",
-    //     SystemTime::now()
-    //         .duration_since(SystemTime::UNIX_EPOCH)
-    //         .unwrap()
-    //         .as_millis()
-    // );
-    // let mut headers = HeaderMap::new();
-    // let sign = headers.insert("client_id", client_id.parse().unwrap());
-    // headers.insert("access_token", acces_token.parse().unwrap());
-    // headers.insert(CONTENT_TYPE, "application/json".parse().unwrap());
-    // headers.insert("mode", "cors".parse().unwrap());
-    // headers.insert("sign_method", "HMAC-SHA256".parse().unwrap());
-    // headers.insert("t", time.parse().unwrap());
-
-    // let client = reqwest::blocking::Client::new();
-    // match command {
-    //     SwitchCommand::On | SwitchCommand::Off => {
-    //         let body = Payload {
-    //             commands: vec![Command {
-    //                 code: "switch".to_string(),
-    //                 value: match command {
-    //                     SwitchCommand::On => true,
-    //                     SwitchCommand::Off => false,
-    //                     SwitchCommand::Status => return None,
-    //                 },
-    //             }],
-    //         };
-
-    //         let res = client
-    //             .post(url)
-    //             .headers(headers)
-    //             .json(&body)
-    //             .send()
-    //             .unwrap();
-    //         // println!("{:?}", res.text());
-    //     }
-    //     SwitchCommand::Status => {
-    //         let res = client.get(url).headers(headers).send().unwrap();
-    //     }
-    // }
-
-    // The dps value is device specific, this socket turns on with key "1"
-    let mut dps = HashMap::new();
-    dps.insert(
-        "1".to_string(),
-        json!(match command {
-            SwitchCommand::On => true,
-            _ => false,
-        }),
-    );
-
-    let current_time = SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap()
-        .as_secs() as u32;
-
-    // Create the payload to be sent, this will be serialized to the JSON format
-    let payload = Payload::Struct(PayloadStruct {
-        dev_id: device.id.to_string(),
-        gw_id: Some(acces_token.to_string()),
-        uid: None,
-        t: Some(current_time),
-        dp_id: None,
-        dps: match command {
-            SwitchCommand::Status => None,
-            _ => Some(dps),
-        },
-    });
-    // Create a TuyaDevice, this is the type used to set/get status to/from a Tuya compatible
-    // device.
-    let tuya_device = TuyaDevice::create(
-        "ver3.3",
-        Some(&device.key),
-        IpAddr::from_str(&device.ip).unwrap(),
-    )
-    .unwrap();
-
-    // Set the payload state on the Tuya device, an error here will contain
-    // the error message received from the device.
-    let mut res: Option<Vec<Message>> = None;
-    match command {
-        SwitchCommand::Status => {
-            res = Some(tuya_device.get(payload, 0).unwrap_or_else(|_| {
-                println!("Error: Close Smart Life App");
-                std::process::exit(0);
-            }))
+pub fn parse_message(message: &Message) -> Option<SwitchCommand> {
+    match &message.payload {
+        Payload::Struct(s) => {
+            if let Some(dps) = &s.dps {
+                if let Some(value) = dps.get("1") {
+                    parse_value(value)
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
         }
-        _ => tuya_device.set(payload, 0).unwrap_or_else(|_| {
-            println!("Error: Close Smart Life App");
-            std::process::exit(0);
-        }),
-    };
+        Payload::String(s) => {
+            let json: Value = serde_json::from_str(s.as_str()).unwrap();
+            let value = &json["dps"]["1"];
+            parse_value(value)
+        }
+    }
+}
 
-    if let Some(m) = res {
-        match &m[0].payload {
-            Payload::Struct(s) => {
-                if let Some(dps) = &s.dps {
-                    if let Some(value) = dps.get("1") {
-                        if value.as_bool().unwrap() {
-                            return Some(SwitchCommand::On);
-                        } else {
-                            return Some(SwitchCommand::Off);
-                        }
-                    } else {
-                        return None;
-                    }
-                } else {
-                    return None;
-                }
-            }
-            Payload::String(s) => {
-                let json: Value = serde_json::from_str(s).unwrap();
-                if json["dps"]["1"].as_bool().unwrap() {
-                    return Some(SwitchCommand::On);
-                } else {
-                    return Some(SwitchCommand::Off);
-                }
-            }
+fn parse_value(value: &Value) -> Option<SwitchCommand> {
+    if let Some(b) = value.as_bool() {
+        if b {
+            Some(SwitchCommand::On)
+        } else {
+            Some(SwitchCommand::Off)
         }
     } else {
-        Some(command.clone())
+        match value.as_str() {
+            Some("1") => Some(SwitchCommand::Open),
+            Some("2") => Some(SwitchCommand::Close),
+            Some("3") => Some(SwitchCommand::Stop),
+            _ => None,
+        }
     }
 }
