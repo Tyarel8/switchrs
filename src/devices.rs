@@ -79,7 +79,8 @@ impl Device {
         &self,
         command: &SwitchCommand,
         acces_token: &str,
-    ) -> Option<SwitchCommand> {
+        retries: i32,
+    ) -> (Option<SwitchCommand>, Retry) {
         let device_type = DeviceType::from_device(self).unwrap_or_else(|e| {
             println!("{e}");
             std::process::exit(1)
@@ -143,21 +144,31 @@ impl Device {
         // Set the payload state on the Tuya device, an error here will contain
         // the error message received from the device.
         let res: Option<Vec<Message>> = match command {
-            SwitchCommand::Status => Some(tuya_device.get(payload, 0).unwrap_or_else(|x| {
-                handle_tuya_err(x);
-                std::process::exit(1);
-            })),
-            _ => {
-                tuya_device.set(payload, 0).unwrap_or_else(|x| {
-                    handle_tuya_err(x);
+            SwitchCommand::Status => {
+                let r = tuya_device.get(payload, 0);
+                if let Err(x) = r {
+                    if let Retry::Retry = handle_tuya_err(x, retries) {
+                        return (None, Retry::Retry);
+                    }
                     std::process::exit(1);
-                });
-                return None;
+                } else {
+                    Some(r.unwrap())
+                }
+            }
+            _ => {
+                let r = tuya_device.set(payload, 0);
+                if let Err(x) = r {
+                    if let Retry::Retry = handle_tuya_err(x, retries) {
+                        return (None, Retry::Retry);
+                    }
+                    std::process::exit(1);
+                };
+                return (None, Retry::NoRetry);
             }
         };
 
         if let Some(m) = res {
-            parse_message(&m[0])
+            (parse_message(&m[0]), Retry::NoRetry)
         } else {
             println!("Error: Invalid status response");
             std::process::exit(1);
@@ -165,18 +176,29 @@ impl Device {
     }
 }
 
-fn handle_tuya_err(err: rust_tuyapi::error::ErrorKind) {
+pub enum Retry {
+    Retry,
+    NoRetry,
+}
+
+fn handle_tuya_err(err: rust_tuyapi::error::ErrorKind, retries: i32) -> Retry {
     if let rust_tuyapi::error::ErrorKind::TcpError(x) = err {
         match x.kind() {
             std::io::ErrorKind::TimedOut => {
                 println!("Timeout Error: device not responding");
+                Retry::NoRetry
             }
             std::io::ErrorKind::ConnectionReset => {
-                println!("Connection Error: Close Smart Life App");
+                if retries == 1 {
+                    println!("Connection Error: Close Smart Life App");
+                }
+                Retry::Retry
             }
             _ => {
                 println!("Error: {}", x);
+                Retry::Retry
             }
         };
     }
+    Retry::Retry
 }

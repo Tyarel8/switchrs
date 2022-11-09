@@ -1,6 +1,6 @@
 // #![allow(dead_code, unused_variables)]
 
-use devices::{Device, Tuya};
+use devices::{Device, Retry, Tuya};
 use utils::{get_devices_path, SwitchCommand};
 
 pub mod devices;
@@ -77,11 +77,20 @@ fn main() {
     }
 
     for device in found_devices {
-        let result = device.execute_command(&command, &tuya.api_secret);
-        if let Some(result) = result {
-            println!("{} status: {}", device.name, result);
-        } else {
-            println!("{} -> {}", device.name, command);
+        let mut retries = 3;
+        while retries > 0 {
+            let result = device.execute_command(&command, &tuya.api_secret, retries);
+            if let Retry::Retry = result.1 {
+                retries -= 1;
+                continue;
+            }
+
+            if let Some(result) = result.0 {
+                println!("{} status: {}", device.name, result);
+            } else {
+                println!("{} -> {}", device.name, command);
+            }
+            break;
         }
     }
 }
