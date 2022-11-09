@@ -85,7 +85,10 @@ pub fn parse_message(message: &Message) -> Option<SwitchCommand> {
             }
         }
         Payload::String(s) => {
-            let json: Value = serde_json::from_str(s.as_str()).unwrap();
+            let json: Value = serde_json::from_str(s.as_str()).unwrap_or_else(|_| {
+                println!("Version 3.4 of the Tuya API is not supported");
+                std::process::exit(1);
+            });
             let value = &json["dps"]["1"];
             parse_value(value)
         }
