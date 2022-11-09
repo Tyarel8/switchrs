@@ -84,17 +84,4 @@ fn main() {
             println!("{} -> {}", device.name, command);
         }
     }
-
-    // let result = execute_command(device, &command, &tuya.api_secret);
-    // if let Some(result) = result {
-    //     match (&result, command) {
-    //         (SwitchCommand::On, SwitchCommand::On) | (SwitchCommand::Off, SwitchCommand::Off) => {
-    //             println!("Switched {}", result)
-    //         }
-    //         (_, SwitchCommand::Status) => println!("Status: {}", result),
-    //         _ => println!("Unexpected result: {}", result),
-    //     }
-    // } else {
-    //     println!("Failed to execute command");
-    // }
 }

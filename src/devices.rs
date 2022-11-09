@@ -152,7 +152,7 @@ impl Device {
                     handle_tuya_err(x);
                     std::process::exit(1);
                 });
-                None
+                return None;
             }
         };
 
