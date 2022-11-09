@@ -12,7 +12,7 @@ fn main() {
     let mut args: Vec<String> = std::env::args().skip(1).collect();
 
     if args.len() != 2 {
-        println!("Usage: switchrs <on|off|status> <device name|group name>");
+        println!("Usage: switchrs <on|off|open|close|stop|status> <device name|group name>");
         std::process::exit(1);
     }
 
