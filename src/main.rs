@@ -22,6 +22,7 @@ fn main() {
     });
     let device_arg = args.remove(0).to_lowercase();
 
+    // find if the argument is a group or a device
     let input_devices: Vec<&str> = tuya
         .groups
         .iter()
@@ -76,7 +77,21 @@ fn main() {
         }
     }
 
-    for device in found_devices {
+    // Get delay and batch size if the argument is a group
+    let (delay, batch) = tuya
+        .groups
+        .iter()
+        .find_map(|x| {
+            if x.group_name.to_lowercase() == device_arg {
+                Some((x.delay.unwrap_or(0), x.batch.unwrap_or(1)))
+            } else {
+                None
+            }
+        })
+        .unwrap_or((0, 1));
+
+    // Iterate over the devies and execute the command
+    for (i, device) in found_devices.iter().enumerate() {
         let mut retries = 3;
         while retries > 0 {
             let result = device.execute_command(&command, &tuya.api_secret, retries);
@@ -91,6 +106,14 @@ fn main() {
                 println!("{} -> {}", device.name, command);
             }
             break;
+        }
+
+        // Sleep for the delay when batch size is reached
+        if (i + 1) as u64 % batch == 0
+            && !matches!(command, SwitchCommand::Status | SwitchCommand::Stop)
+            && i != found_devices.len() - 1
+        {
+            std::thread::sleep(std::time::Duration::from_millis(delay));
         }
     }
 }

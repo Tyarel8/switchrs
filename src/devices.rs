@@ -40,6 +40,8 @@ pub struct Group {
     #[serde(rename = "group_name")]
     pub group_name: String,
     pub devices: Vec<String>,
+    pub delay: Option<u64>,
+    pub batch: Option<u64>,
 }
 
 pub enum DeviceType {
