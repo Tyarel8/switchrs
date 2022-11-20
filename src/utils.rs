@@ -6,12 +6,12 @@ use serde_json::Value;
 
 use crate::devices::DeviceType;
 
-pub fn get_devices_path() -> PathBuf {
+pub fn get_devices_path(file_name: &str) -> PathBuf {
     if cfg!(debug_assertions) {
-        PathBuf::from("devices.toml")
+        PathBuf::from(file_name)
     } else {
         let exe_path = std::env::current_exe().unwrap();
-        exe_path.parent().unwrap().join("devices.toml")
+        exe_path.parent().unwrap().join(file_name)
     }
 }
 

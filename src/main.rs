@@ -6,7 +6,7 @@ use utils::{get_devices_path, SwitchCommand};
 pub mod devices;
 mod utils;
 fn main() {
-    let tuya = Tuya::from_file(get_devices_path())
+    let tuya = Tuya::from_file(get_devices_path("devices.toml"))
         .expect("`devices.toml` not found in the same directory as the executable | invalid `devices.toml` file");
 
     let mut args: Vec<String> = std::env::args().skip(1).collect();

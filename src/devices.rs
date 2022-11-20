@@ -197,7 +197,9 @@ fn handle_tuya_err(err: rust_tuyapi::error::ErrorKind, retries: i32) -> Retry {
                 Retry::Retry
             }
             _ => {
-                println!("Error: {}", x);
+                if retries == 1 {
+                    println!("Error: {}", x);
+                }
                 Retry::Retry
             }
         };
