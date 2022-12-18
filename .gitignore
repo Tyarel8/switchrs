@@ -1,3 +1,5 @@
 /target
 devices.toml
 *.exe
+sync_ips.py
+__pycache__

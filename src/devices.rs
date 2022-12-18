@@ -103,17 +103,12 @@ impl Device {
                 dps.insert(
                     "1".to_string(),
                     match command {
-                        SwitchCommand::On | SwitchCommand::Off => json!(match command {
-                            SwitchCommand::On => true,
-                            SwitchCommand::Off => false,
-                            _ => unreachable!(),
-                        }),
-                        _ => json!(match command {
-                            SwitchCommand::Open => "1",
-                            SwitchCommand::Close => "2",
-                            SwitchCommand::Stop => "3",
-                            _ => unreachable!(),
-                        }),
+                        SwitchCommand::On => json!(true),
+                        SwitchCommand::Off => json!(false),
+                        SwitchCommand::Open => json!("1"),
+                        SwitchCommand::Close => json!("2"),
+                        SwitchCommand::Stop => json!("3"),
+                        _ => unreachable!(),
                     },
                 );
                 Some(dps)

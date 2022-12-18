@@ -1,4 +1,4 @@
-// #![allow(dead_code, unused_variables)]
+// #![allow(unused)]
 
 use devices::{Device, Retry, Tuya};
 use utils::{get_devices_path, SwitchCommand};
@@ -6,8 +6,10 @@ use utils::{get_devices_path, SwitchCommand};
 pub mod devices;
 mod utils;
 fn main() {
-    let tuya = Tuya::from_file(get_devices_path("devices.toml"))
-        .expect("`devices.toml` not found in the same directory as the executable | invalid `devices.toml` file");
+    let Ok(tuya) = Tuya::from_file(get_devices_path("devices.toml")) else {
+        println!("`devices.toml` not found in the same directory as the executable | invalid `devices.toml` file");
+        std::process::exit(1);
+    };
 
     let mut args: Vec<String> = std::env::args().skip(1).collect();
 
@@ -16,10 +18,10 @@ fn main() {
         std::process::exit(1);
     }
 
-    let command: SwitchCommand = args.remove(0).parse().unwrap_or_else(|_| {
+    let Ok(command) = args.remove(0).parse() else {
         println!("Invalid Command");
         std::process::exit(1)
-    });
+    };
     let device_arg = args.remove(0).to_lowercase();
 
     // find if the argument is a group or a device
