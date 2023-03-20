@@ -1,6 +1,6 @@
 // #![allow(unused)]
 
-use devices::{Device, Retry, Tuya};
+use devices::{Device, Tuya, TuyaResult};
 use utils::{get_devices_path, SwitchCommand};
 
 pub mod devices;
@@ -97,14 +97,19 @@ fn main() {
         let mut retries = 3;
         while retries > 0 {
             let result = device.execute_command(&command, &tuya.api_secret, retries);
-            if let Retry::Retry = result.1 {
+            if let TuyaResult::Retry = result {
                 retries -= 1;
+                println!("Retrying ({})...", device.name);
                 continue;
             }
 
-            if let Some(result) = result.0 {
+            if let TuyaResult::Failure = result {
+                println!("Failed to execute command on {}", device.name);
+            }
+
+            if let TuyaResult::Success(result) = result {
                 println!("{} status: {}", device.name, result);
-            } else {
+            } else if let TuyaResult::EmptySuccess = result {
                 println!("{} -> {}", device.name, command);
             }
             break;
