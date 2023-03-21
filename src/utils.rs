@@ -1,5 +1,6 @@
 use std::{fmt::Display, path::PathBuf, str::FromStr};
 
+use clap::ValueEnum;
 use colored::Colorize;
 use rust_tuyapi::{mesparse::Message, Payload};
 use serde_json::Value;
@@ -32,13 +33,19 @@ pub fn validate_device_command(device: &DeviceType, command: &SwitchCommand) -> 
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, ValueEnum)]
 pub enum SwitchCommand {
+    /// Turn on switch
     On,
+    /// Turn off switch
     Off,
+    /// Open blind
     Open,
+    /// Close blind
     Close,
+    /// Stop blind
     Stop,
+    /// Get status of device
     Status,
 }
 

@@ -1,28 +1,35 @@
 // #![allow(unused)]
 
+use clap::Parser;
 use devices::{Device, Tuya, TuyaResult};
 use utils::{get_devices_path, SwitchCommand};
 
-pub mod devices;
+mod cli;
+mod devices;
 mod utils;
+
 fn main() {
-    let Ok(tuya) = Tuya::from_file(get_devices_path("devices.toml")) else {
-        println!("`devices.toml` not found in the same directory as the executable | invalid `devices.toml` file");
+    let cli = cli::Cli::parse();
+
+    let Ok(tuya) = Tuya::from_file(cli.path.unwrap_or_else(|| get_devices_path("devices.toml"))) else {
+        println!("`devices.toml` not found | invalid `devices.toml` file");
         std::process::exit(1);
     };
 
-    let mut args: Vec<String> = std::env::args().skip(1).collect();
+    // let mut args: Vec<String> = std::env::args().skip(1).collect();
 
-    if args.len() != 2 {
-        println!("Usage: switchrs <on|off|open|close|stop|status> <device name|group name>");
-        std::process::exit(1);
-    }
+    // if args.len() != 2 {
+    //     println!("Usage: switchrs <on|off|open|close|stop|status> <device name|group name>");
+    //     std::process::exit(1);
+    // }
 
-    let Ok(command) = args.remove(0).parse() else {
-        println!("Invalid Command");
-        std::process::exit(1)
-    };
-    let device_arg = args.remove(0).to_lowercase();
+    // let Ok(command) = args.remove(0).parse() else {
+    //     println!("Invalid Command");
+    //     std::process::exit(1)
+    // };
+    // let device_arg = args.remove(0).to_lowercase();
+    let command = cli.command;
+    let device_arg = cli.device.to_lowercase();
 
     // find if the argument is a group or a device
     let input_devices: Vec<&str> = tuya
@@ -97,21 +104,18 @@ fn main() {
         let mut retries = 3;
         while retries > 0 {
             let result = device.execute_command(&command, &tuya.api_secret, retries);
-            if let TuyaResult::Retry = result {
-                retries -= 1;
-                println!("Retrying ({})...", device.name);
-                continue;
+
+            match result {
+                TuyaResult::Retry => {
+                    retries -= 1;
+                    println!("Retrying ({})...", device.name);
+                    continue;
+                }
+                TuyaResult::Failure => println!("Failed to execute command on {}", device.name),
+                TuyaResult::Success(result) => println!("{} status: {}", device.name, result),
+                TuyaResult::EmptySuccess => println!("{} -> {}", device.name, command),
             }
 
-            if let TuyaResult::Failure = result {
-                println!("Failed to execute command on {}", device.name);
-            }
-
-            if let TuyaResult::Success(result) = result {
-                println!("{} status: {}", device.name, result);
-            } else if let TuyaResult::EmptySuccess = result {
-                println!("{} -> {}", device.name, command);
-            }
             break;
         }
 
