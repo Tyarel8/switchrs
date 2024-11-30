@@ -47,6 +47,7 @@ pub struct Group {
 pub enum DeviceType {
     Switch,
     Blind,
+    Blind2,
 }
 
 impl DeviceType {
@@ -54,6 +55,7 @@ impl DeviceType {
         match s.product_name.to_lowercase().as_str() {
             "smart socket" => Ok(Self::Switch),
             "curtain switch" => Ok(Self::Blind),
+            "curtain switch 2" => Ok(Self::Blind2),
             _ => Err(format!("Invalid device type: {}", s.product_name)),
         }
     }
@@ -64,6 +66,7 @@ impl Display for DeviceType {
         match self {
             Self::Switch => write!(f, "Switch"),
             Self::Blind => write!(f, "Blind"),
+            Self::Blind2 => write!(f, "Blind"),
         }
     }
 }
@@ -99,15 +102,20 @@ impl Device {
         let dps = match command {
             SwitchCommand::Status => None,
             _ => {
+                use DeviceType::*;
+                use SwitchCommand::*;
                 let mut dps = HashMap::new();
                 dps.insert(
                     "1".to_string(),
-                    match command {
-                        SwitchCommand::On => json!(true),
-                        SwitchCommand::Off => json!(false),
-                        SwitchCommand::Open => json!("1"),
-                        SwitchCommand::Close => json!("2"),
-                        SwitchCommand::Stop => json!("3"),
+                    match (command, device_type) {
+                        (On, _) => json!(true),
+                        (Off, _) => json!(false),
+                        (Open, Blind) => json!("1"),
+                        (Close, Blind) => json!("2"),
+                        (Stop, Blind) => json!("3"),
+                        (Open, Blind2) => json!("open"),
+                        (Close, Blind2) => json!("close"),
+                        (Stop, Blind2) => json!("stop"),
                         _ => unreachable!(),
                     },
                 );

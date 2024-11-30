@@ -23,7 +23,7 @@ pub fn validate_device_command(device: &DeviceType, command: &SwitchCommand) -> 
             SwitchCommand::On | SwitchCommand::Off | SwitchCommand::Status
         ),
 
-        DeviceType::Blind => matches!(
+        DeviceType::Blind | DeviceType::Blind2 => matches!(
             command,
             SwitchCommand::Open
                 | SwitchCommand::Close
@@ -114,6 +114,9 @@ fn parse_value(value: &Value) -> Option<SwitchCommand> {
             Some("1") => Some(SwitchCommand::Open),
             Some("2") => Some(SwitchCommand::Close),
             Some("3") => Some(SwitchCommand::Stop),
+            Some("open") => Some(SwitchCommand::Open),
+            Some("close") => Some(SwitchCommand::Close),
+            Some("stop") => Some(SwitchCommand::Stop),
             _ => None,
         }
     }

@@ -1,5 +1,6 @@
 /target
 devices.toml
 *.exe
+build.nu
 sync_ips.py
 __pycache__
