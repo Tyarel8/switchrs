@@ -11,7 +11,8 @@ mod utils;
 fn main() {
     let cli = cli::Cli::parse();
 
-    let Ok(tuya) = Tuya::from_file(cli.path.unwrap_or_else(|| get_devices_path("devices.toml"))) else {
+    let Ok(tuya) = Tuya::from_file(cli.path.unwrap_or_else(|| get_devices_path("devices.toml")))
+    else {
         println!("`devices.toml` not found | invalid `devices.toml` file");
         std::process::exit(1);
     };
@@ -45,11 +46,11 @@ fn main() {
         .unwrap_or_else(|| vec![device_arg.as_str()]);
 
     // Get the name of the group if that was the argument
-    let group_name: Option<&str> = if input_devices.contains(&device_arg.as_str()) {
-        None
-    } else {
-        Some(&device_arg)
-    };
+    // let group_name: Option<&str> = if input_devices.contains(&device_arg.as_str()) {
+    //     None
+    // } else {
+    //     Some(&device_arg)
+    // };
 
     let mut found_devices: Vec<&Device> = vec![];
     for idevice in input_devices {
@@ -71,20 +72,20 @@ fn main() {
         found_devices.push(devi);
     }
 
-    if found_devices.len() > 1 {
-        let fdevice = &found_devices.first().unwrap().product_name.to_lowercase();
-        if !found_devices
-            .iter()
-            .skip(1)
-            .all(|x| &x.product_name.to_lowercase() == fdevice)
-        {
-            println!(
-                "All devices must be of the same type in group `{}`",
-                group_name.unwrap()
-            );
-            std::process::exit(1)
-        }
-    }
+    // if found_devices.len() > 1 {
+    //     let fdevice = &found_devices.first().unwrap().product_name.to_lowercase();
+    //     if !found_devices
+    //         .iter()
+    //         .skip(1)
+    //         .all(|x| &x.product_name.to_lowercase() == fdevice)
+    //     {
+    //         println!(
+    //             "All devices must be of the same type in group `{}`",
+    //             group_name.unwrap()
+    //         );
+    //         std::process::exit(1)
+    //     }
+    // }
 
     // Get delay and batch size if the argument is a group
     let (delay, batch) = tuya
